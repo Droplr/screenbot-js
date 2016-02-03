@@ -1,6 +1,6 @@
 {
   "name": "screenbot",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "The JS SDK for Screenbot.",
   "main": "source/screenbot.js",
   "dependencies": {},
