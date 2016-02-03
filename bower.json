@@ -1,5 +1,5 @@
 {
-    "name": "Screenbot",
+    "name": "screenbot",
     "version": "0.0.1",
     "main": "distrib/screenbot.js",
     "ignore": [
