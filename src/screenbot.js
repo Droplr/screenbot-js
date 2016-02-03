@@ -3,7 +3,7 @@ var Screenbot = (function Screenbot() {
         "source"  : null, // Our EventSource connection
         "token"   : null, // Our Screenbot token
         "service" : "sdk",
-        "host"    : ""
+        "host"    : "https://app.screenbot.io"
     };
 
     var _endpoint = function(command){

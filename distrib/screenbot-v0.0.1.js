@@ -1,11 +1,11 @@
 /*! screenbot v0.0.1 - 2016-02-03 
- *  License: ISC */
+ *  License: Apache-2.0 */
 var Screenbot = (function Screenbot() {
     var _private = {
         "source"  : null, // Our EventSource connection
         "token"   : null, // Our Screenbot token
         "service" : "sdk",
-        "host"    : ""
+        "host"    : "https://app.screenbot.io"
     };
 
     var _endpoint = function(command){
