@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<head>
+  <title>Screenbot</title>
+  <script src="https://js.pusher.com/2.2/pusher.min.js"></script>
+  <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  <script src="https://rawgit.com/Droplr/screenbot-js/master/src/screenbot.js"></script>
+  <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <h1>Screenbot</h1>
+    <form method="post" id="js-token-form">
+    <input type="text" placeholder="Enter your Screenbot API key" id="js-token-value" style="width:200px; margin-right: 10px;"><input type="submit">
+    </form>
+    <form method="post" id="js-screenbot-form" style="display:none;">
+    <p style="margin: 10px 0; border: 2px solid #ccc; border-radius: 6px; padding: 0 10px;">
+     sb / <input type="text" style="width: 90%; border:0; outline: none; padding: 5px" id="js-screenbot-command" placeholder="[shot,draw,cast,clip,...]">
+    </p>
+    </form>
+    <br>
+    <textarea style="width: 100%; min-height: 100px" placeholder="Screenbot results will appear here"></textarea>
+    <script>
+    var sb;
+
+    $(document).ready(function(){
+      $("#js-token-form").submit(function(e){
+        e.preventDefault();
+        sb = new Screenbot($("#js-token-value").val()/*, {host : "https://screenbot.herokuapp.com"}*/); // invoke
+        $("#js-screenbot-form").show();
+      });
+
+      $("#js-screenbot-form").submit(function(e){
+        e.preventDefault();
+        if(!sb) return alert("Please enter a Screenbot API key first");
+
+        var command = $("#js-screenbot-command").val();
+        $("#js-screenbot-command").val("");
+        $("#js-screenbot-command").attr("disabled", true);
+        sb.activate(function(success, drop_link){
+          $("textarea").append(drop_link + "\n");
+          $("#js-screenbot-command").removeAttr("disabled");
+        });
+      });
+    });
+    </script>
+
+  </div>
+</body>
