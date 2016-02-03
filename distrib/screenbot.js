@@ -1,4 +1,4 @@
-/*! screenbot v0.0.1 - 2016-02-03 
+/*! screenbot v0.0.6 - 2016-02-03 
  *  License: Apache-2.0 */
 var Screenbot = (function Screenbot() {
     var _private = {
