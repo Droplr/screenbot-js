@@ -38,6 +38,13 @@ var Screenbot = (function Screenbot() {
       xhttp.send();
     };
 
+    var _handleError = function(response, cb){
+      var error = new Error(response.error);
+      error.code = 1;
+
+      return cb(error);
+    };
+
     // Return the constructor
     return function ScreenbotConstructor(token, args) {
         var _this = this; // Cache the `this` keyword
@@ -51,11 +58,12 @@ var Screenbot = (function Screenbot() {
 
           _request(_endpoint(command), function(success, response) {
 
-            if (!success) return cb(false, response.error);
+            if (!success || !response.ok) return _handleError(response, cb);
 
             if(_private.source && _private.source.readyState !== 2) {
               _private.source.close();
             }
+
             _private.source = new EventSource(_response_endpoint(response.token));
             _private.source.onmessage = function(event) {
               _private.source.close();
