@@ -21,7 +21,7 @@ Initialize the client
 var sb = new Screenbot("pk_test_sdk_token_value");
 ```
 
-You can manage your SDK keys on [your developer dashboard](https://app.screenbot.io/dashboard)
+You can manage your SDK keys on [your developer dashboard](https://app.screenbot.io/dashboard).
 
 Run a command:
 
@@ -32,7 +32,7 @@ sb.activate(function(err, result){
   // err has properties for the error's code and message
   if(err) return console.log('Error! Code: ' + err.code + ' Message: ' + err.message);
 
-  // result has a url property that points to screenshot.
+  // result has a url property that points to the uploaded drop
   console.log(result.url);
   // http://d.pr/i/zJSD
 });
@@ -42,7 +42,7 @@ sb.shot(function(err, result){
   // err has properties for the error's code and message
   if(err) return console.log('Error! Code: ' + err.code + ' Message: ' + err.message);
 
-  // result has a url property that points to screenshot. 
+  // result has a url property that points to a screenshot
   console.log(result.url);
   // http://d.pr/i/1kA2M
 });
@@ -52,7 +52,7 @@ sb.cast(function(err, result){
   // err has properties for the error's code and message
   if(err) return console.log('Error! Code: ' + err.code + ' Message: ' + err.message);
 
-  // result has a url property that points to an screencast.
+  // result has a url property that points to a screencast
   console.log(result.url);
   // http://d.pr/i/12A5W
 });
@@ -62,7 +62,7 @@ sb.clip(function(err, result){
   // err has properties for the error's code and message
   if(err) return console.log('Error! Code: ' + err.code + ' Message: ' + err.message);
 
-  // result has a url property that points to an annotated screenshot.
+  // result has a url property that points to the uploaded drop
   console.log(result.url);
   // http://d.pr/f/1iTCo
 });
@@ -70,6 +70,13 @@ sb.clip(function(err, result){
 ```
 
 To see a working example, clone the repo and open [example/index.html](https://github.com/Droplr/screenbot-js/blob/master/example/index.html) in your browser.
+
+## Error Codes
+
+|Code|Message|Resolution|
+|:--:|------|----------|
+|1|`Screenbot isn't running`|This error occurs when the library can't connect to the Screenbot desktop app. Make sure that you're initializing the client with a valid API token. You can manage your tokens on [your developer dashboard](https://app.screenbot.io/dashboard).|
+|2|`No data received`|This error occurs when there is no response from the Screenbot desktop app after a command is sent. Make sure your API tokens are valid. The app itself should display a more specific error as well.|
 
 ## License
 
