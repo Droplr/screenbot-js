@@ -51,11 +51,11 @@
         $commandInput.val("");
         $commandInput.attr("disabled", true);
 
-        sb[command](function(error, response){
-          if(error) return $outputArea.append('Error ' + error.code + ': ' + error.message);
+        sb[command](function(err, result){
+          if(err) return $outputArea.append('Error! Code: ' + err.code + ' Message: ' + err.message);
 
-          $outputArea.append(drop_link + "\n");
-          $("#js-screenbot-command").removeAttr("disabled");
+          $outputArea.append(result.url + "\n");
+          $commandInput.removeAttr("disabled");
         });
       });
     });

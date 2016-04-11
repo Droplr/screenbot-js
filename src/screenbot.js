@@ -38,12 +38,20 @@ var Screenbot = (function Screenbot() {
       xhttp.send();
     };
 
-    var _handleError = function(response, cb){
-      var error = new Error(response.error);
-      error.code = 1;
-
-      return cb(error);
+    var _handleError = function(args, cb){
+      var err = new ScreenbotError(args);
+      return cb(err);
     };
+
+    var ScreenbotError = function(args){
+      this.name = 'Screenbot Error';
+      this.message = args.message || 'An error has occured';
+      this.code = args.code;
+      this.stack = (new Error()).stack;
+    };
+
+    ScreenbotError.prototype = Object.create(Error.prototype);
+    ScreenbotError.prototype.constructor = ScreenbotError;
 
     // Return the constructor
     return function ScreenbotConstructor(token, args) {
@@ -57,8 +65,7 @@ var Screenbot = (function Screenbot() {
           console.log("Source: " + _private.source);
 
           _request(_endpoint(command), function(success, response) {
-
-            if (!success || !response.ok) return _handleError(response, cb);
+            if (!success || !response.ok) return _handleError({ code: 1, message: response.error }, cb);
 
             if(_private.source && _private.source.readyState !== 2) {
               _private.source.close();
@@ -67,8 +74,10 @@ var Screenbot = (function Screenbot() {
             _private.source = new EventSource(_response_endpoint(response.token));
             _private.source.onmessage = function(event) {
               _private.source.close();
-              if(event.data === "0") cb(false);
-              if(event.data !== "0") cb(true, event.data);
+              if(event.data === "0" || !event.data.length) return _handleError({ code: 2, message: 'No data received' }, cb);
+
+              var result = { url: event.data };
+              cb(null, result);
             };
           });
         };
