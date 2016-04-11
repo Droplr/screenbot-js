@@ -75,7 +75,7 @@ To see a working example, clone the repo and open [example/index.html](https://g
 
 |Code|Message|Resolution|
 |:--:|------|----------|
-|1|`Screenbot isn't running`|This error occurs when the library can't connect to the Screenbot desktop app. Make sure that you're initializing the client with a valid API token. You can manage your tokens on [your developer dashboard](https://app.screenbot.io/dashboard).|
+|1|`Screenbot isn't running`|This error occurs when the library can't connect to the Screenbot desktop app. Make sure that you're initializing the client with a valid API token. You can manage your tokens on [your developer dashboard](https://app.screenbot.io/dashboard).<br><br>Also, make sure the app is [running and connected](http://d.pr/i/BZHN). If have multiple accounts, check in the app under "Preferences" that Screenbot is signed in to the account that's [associated with your API token](http://d.pr/i/17UoA).|
 |2|`No data received`|This error occurs when there is no response from the Screenbot desktop app after a command is sent. Make sure your API tokens are valid. The app itself should display a more specific error as well.|
 
 ## License
