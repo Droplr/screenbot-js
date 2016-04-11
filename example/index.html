@@ -9,35 +9,52 @@
 <body>
   <div class="container">
     <h1>Screenbot</h1>
+
     <form method="post" id="js-token-form">
-    <input type="text" placeholder="Enter your Screenbot API key" id="js-token-value" style="width:200px; margin-right: 10px;"><input type="submit">
+      <input type="text" placeholder="Enter your Screenbot API key" id="js-token-value" style="width: 200px; margin-right: 10px;"><input type="submit">
     </form>
-    <form method="post" id="js-screenbot-form" style="display:none;">
-    <p style="margin: 10px 0; border: 2px solid #ccc; border-radius: 6px; padding: 0 10px;">
-     sb / <input type="text" style="width: 90%; border:0; outline: none; padding: 5px" id="js-screenbot-command" placeholder="[shot,draw,cast,clip,...]">
-    </p>
+
+    <form method="post" id="js-screenbot-form" style="display: none;">
+      <p style="margin: 10px 0; border: 2px solid #ccc; border-radius: 6px; padding: 0 10px;">sb /
+         <input type="text" style="width: 90%; border:0; outline: none; padding: 5px" id="js-screenbot-command" placeholder="[shot,draw,cast,clip,...]">
+      </p>
     </form>
+
     <br>
-    <textarea style="width: 100%; min-height: 100px" placeholder="Screenbot results will appear here"></textarea>
+
+    <textarea id="results" style="display: none; width: 100%; min-height: 100px" placeholder="Screenbot results will appear here"></textarea>
+
     <script>
     var sb;
 
     $(document).ready(function(){
       $("#js-token-form").submit(function(e){
         e.preventDefault();
-        sb = new Screenbot($("#js-token-value").val()/*, {host : "https://screenbot.herokuapp.com"}*/); // invoke
+
+        var token = $("#js-token-value").val();
+
+        if(!token.length) return alert("Please enter a Screenbot API key first");
+
+        sb = new Screenbot(token /*, {host : "https://screenbot.herokuapp.com"}*/); // invoke
+
         $("#js-screenbot-form").show();
+        $("#results").show();
       });
 
       $("#js-screenbot-form").submit(function(e){
         e.preventDefault();
-        if(!sb) return alert("Please enter a Screenbot API key first");
 
-        var command = $("#js-screenbot-command").val();
-        $("#js-screenbot-command").val("");
-        $("#js-screenbot-command").attr("disabled", true);
-        sb.activate(function(success, drop_link){
-          $("textarea").append(drop_link + "\n");
+        var $commandInput = $("#js-screenbot-command"),
+            command       = $commandInput.val(),
+            $outputArea   = $("#results");
+
+        $commandInput.val("");
+        $commandInput.attr("disabled", true);
+
+        sb[command](function(error, response){
+          if(error) return $outputArea.append('Error ' + error.code + ': ' + error.message);
+
+          $outputArea.append(drop_link + "\n");
           $("#js-screenbot-command").removeAttr("disabled");
         });
       });
