@@ -27,6 +27,16 @@ Run a command:
 
 ```javascript
 
+// Check whether the Screenbot client is running and connected
+sb.ping(function(err, result){
+  // err has properties for the error's code and message
+  if(err) return console.log('Error! Code: ' + err.code + ' Message: ' + err.message);
+
+  // result has a connected property that's either true or false
+  console.log(result.connected);
+  // true
+});
+
 // Show the Screenbot menu for all connected clients
 sb.activate(function(err, result){
   // err has properties for the error's code and message

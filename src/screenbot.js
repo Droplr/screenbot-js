@@ -99,6 +99,11 @@ var Screenbot = (function Screenbot() {
           });
         };
 
+        // Check whether the Screenbot app is running and connected
+        _this.ping = function(cb) {
+          _this.command("ping",cb);
+        };
+
         // Take a screenshot
         _this.activate = function(cb) {
           _this.command("",cb);

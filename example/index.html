@@ -16,7 +16,7 @@
 
     <form method="post" id="js-screenbot-form" style="display: none;">
       <p style="margin: 10px 0; border: 2px solid #ccc; border-radius: 6px; padding: 0 10px;">sb /
-         <input type="text" style="width: 90%; border:0; outline: none; padding: 5px" id="js-screenbot-command" placeholder="[shot,draw,cast,clip,...]">
+         <input type="text" style="width: 90%; border:0; outline: none; padding: 5px" id="js-screenbot-command" placeholder="[ping,shot,draw,cast,clip,...]">
       </p>
     </form>
 
@@ -54,7 +54,7 @@
         sb[command](function(err, result){
           if(err) return $outputArea.append('Error! Code: ' + err.code + ' Message: ' + err.message);
 
-          $outputArea.append(result.url + "\n");
+          $outputArea.append(JSON.stringify(result) + "\n");
           $commandInput.removeAttr("disabled");
         });
       });
