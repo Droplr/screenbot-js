@@ -38,6 +38,14 @@ var Screenbot = (function Screenbot() {
       xhttp.send();
     };
 
+    var _setEventSourceTimer = function() {
+      return setTimeout(_closeEventSource, 60000);
+    };
+
+    var _closeEventSource = function(){
+      _private.source.close();
+    };
+
     // Return the constructor
     return function ScreenbotConstructor(token, args) {
         var _this = this; // Cache the `this` keyword
@@ -54,11 +62,17 @@ var Screenbot = (function Screenbot() {
             if (!success) return cb(false, response.error);
 
             if(_private.source && _private.source.readyState !== 2) {
-              _private.source.close();
+              _closeEventSource();
             }
+
             _private.source = new EventSource(_response_endpoint(response.token));
+
+            var timeoutID = _setEventSourceTimer();
+
             _private.source.onmessage = function(event) {
-              _private.source.close();
+              clearTimeout(timeoutID);
+              _closeEventSource();
+
               if(event.data === "0") cb(false);
               if(event.data !== "0") cb(true, event.data);
             };
