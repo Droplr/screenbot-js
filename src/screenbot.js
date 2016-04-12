@@ -1,6 +1,6 @@
 var ERROR_CODES = {
-  CLIENT_UNAVAILABLE: 1,
-  NO_DATA_RECEIVED: 2
+  CLIENT_UNAVAILABLE: { code: 1, message: 'Screenbot isn\'t running' },
+  NO_DATA_RECEIVED: { code: 2, message: 'No data received' }
 };
 
 var Screenbot = (function Screenbot() {
@@ -46,15 +46,24 @@ var Screenbot = (function Screenbot() {
     };
 
     var _handleError = function(args, cb){
-      var err = new ScreenbotError(args);
+      var err = new ScreenbotError(args.code, args.message);
       return cb(err);
     };
 
-    var ScreenbotError = function(args){
+    var ScreenbotError = function(code, message){
       this.name = 'Screenbot Error';
-      this.message = args.message || 'An error has occured';
-      this.code = args.code;
+      this.code = code;
+      this.message = message || findErrorMessage(code) || 'An error has occurred';
       this.stack = (new Error()).stack;
+
+      function findErrorMessage(code) {
+        for (var error in ERROR_CODES) {
+          if (ERROR_CODES.hasOwnProperty(error)) {
+            var currentError = ERROR_CODES[error];
+            if(currentError.code === code) return currentError.message;
+          }
+        }
+      }
     };
 
     ScreenbotError.prototype = Object.create(Error.prototype);
@@ -72,7 +81,7 @@ var Screenbot = (function Screenbot() {
           console.log("Source: " + _private.source);
 
           _request(_endpoint(command), function(err, result) {
-            if(err) return _handleError({ code: ERROR_CODES.CLIENT_UNAVAILABLE, message: err.error }, cb);
+            if(err) return _handleError({ code: ERROR_CODES.CLIENT_UNAVAILABLE.code, message: err.error }, cb);
             if('connected' in result) return cb(null, { connected: result.connected });
 
             if(_private.source && _private.source.readyState !== 2) {
@@ -82,7 +91,7 @@ var Screenbot = (function Screenbot() {
             _private.source = new EventSource(_response_endpoint(result.token));
             _private.source.onmessage = function(event) {
               _private.source.close();
-              if(event.data === "0" || !event.data.length) return _handleError({ code: ERROR_CODES.NO_DATA_RECEIVED, message: 'No data received' }, cb);
+              if(event.data === "0" || !event.data.length) return _handleError({ code: ERROR_CODES.NO_DATA_RECEIVED.code }, cb);
 
               var eventData = { url: event.data };
               cb(null, eventData);
