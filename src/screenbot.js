@@ -1,6 +1,7 @@
 var ERROR_CODES = {
   CLIENT_UNAVAILABLE: { code: 1, message: 'Screenbot isn\'t running' },
-  NO_DATA_RECEIVED: { code: 2, message: 'No data received' }
+  NO_DATA_RECEIVED: { code: 2, message: 'No data received' },
+  PARSE_ERROR: { code: 3, message: 'Error parsing response' }
 };
 
 var Screenbot = (function Screenbot() {
@@ -29,25 +30,35 @@ var Screenbot = (function Screenbot() {
              channel_token;
     };
 
+    var _parseResponse = function(responseText){
+      try {
+        var response = JSON.parse(responseText);
+      }
+      catch (e) {
+        return _handleError({ code: ERROR_CODES.PARSE_ERROR.code });
+      }
+
+      return response;
+    };
+
     var _request = function(endpoint, cb){
       var xhttp = new XMLHttpRequest();
       xhttp.onreadystatechange = function() {
         if (xhttp.readyState === 4 && xhttp.status === 200) {
-          var response = JSON.parse(xhttp.responseText);
-          if(!response.ok) return cb(response);
+          var response = _parseResponse(xhttp.responseText)
+          if(response instanceof Error || !response.ok) cb(response);
+
           cb(null, response);
         } else if(xhttp.readyState === 4) {
-          var response = JSON.parse(xhttp.responseText);
-          cb(response);
+          cb(_parseResponse(xhttp.responseText));
         }
       };
       xhttp.open("GET", endpoint, true);
       xhttp.send();
     };
 
-    var _handleError = function(args, cb){
-      var err = new ScreenbotError(args.code, args.message);
-      return cb(err);
+    var _handleError = function(args){
+      return new ScreenbotError(args.code, args.message);
     };
 
     var ScreenbotError = function(code, message){
@@ -81,7 +92,8 @@ var Screenbot = (function Screenbot() {
           console.log("Source: " + _private.source);
 
           _request(_endpoint(command), function(err, result) {
-            if(err) return _handleError({ code: ERROR_CODES.CLIENT_UNAVAILABLE.code, message: err.error }, cb);
+            if(err instanceof Error) return cb(err);
+            if(err) return cb(_handleError({ code: ERROR_CODES.CLIENT_UNAVAILABLE.code, message: err.error }));
             if('connected' in result) return cb(null, { connected: result.connected });
 
             if(_private.source && _private.source.readyState !== 2) {
@@ -91,7 +103,7 @@ var Screenbot = (function Screenbot() {
             _private.source = new EventSource(_response_endpoint(result.token));
             _private.source.onmessage = function(event) {
               _private.source.close();
-              if(event.data === "0" || !event.data.length) return _handleError({ code: ERROR_CODES.NO_DATA_RECEIVED.code }, cb);
+              if(event.data === "0" || !event.data.length) return cb(_handleError({ code: ERROR_CODES.NO_DATA_RECEIVED.code }));
 
               var eventData = { url: event.data };
               cb(null, eventData);
