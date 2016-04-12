@@ -24,14 +24,16 @@ var Screenbot = (function Screenbot() {
              channel_token;
     };
 
-    var _request = function(endpoint, callback){
+    var _request = function(endpoint, cb){
       var xhttp = new XMLHttpRequest();
       xhttp.onreadystatechange = function() {
         if (xhttp.readyState === 4 && xhttp.status === 200) {
           var response = JSON.parse(xhttp.responseText);
-          callback(response.ok, response);
+          if(!response.ok) return cb(response);
+          cb(null, response);
         } else if(xhttp.readyState === 4) {
-          callback(false, xhttp.responseText);
+          var response = JSON.parse(xhttp.responseText);
+          cb(response);
         }
       };
       xhttp.open("GET", endpoint, true);
@@ -64,20 +66,21 @@ var Screenbot = (function Screenbot() {
         _this.command = function (command, cb) {
           console.log("Source: " + _private.source);
 
-          _request(_endpoint(command), function(success, response) {
-            if (!success || !response.ok) return _handleError({ code: 1, message: response.error }, cb);
+          _request(_endpoint(command), function(err, result) {
+            if(err) return _handleError({ code: 1, message: result.error }, cb);
+            if('connected' in result) return cb(null, { connected: result.connected });
 
             if(_private.source && _private.source.readyState !== 2) {
               _private.source.close();
             }
 
-            _private.source = new EventSource(_response_endpoint(response.token));
+            _private.source = new EventSource(_response_endpoint(result.token));
             _private.source.onmessage = function(event) {
               _private.source.close();
               if(event.data === "0" || !event.data.length) return _handleError({ code: 2, message: 'No data received' }, cb);
 
-              var result = { url: event.data };
-              cb(null, result);
+              var eventData = { url: event.data };
+              cb(null, eventData);
             };
           });
         };
