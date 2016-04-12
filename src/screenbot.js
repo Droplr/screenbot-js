@@ -51,10 +51,10 @@ var Screenbot = (function Screenbot() {
     };
 
     var ScreenbotError = function(code, message){
+      Error.call(this);
       this.name = 'Screenbot Error';
       this.code = code;
       this.message = message || findErrorMessage(code) || 'An error has occurred';
-      this.stack = (new Error()).stack;
 
       function findErrorMessage(code) {
         for (var error in ERROR_CODES) {
