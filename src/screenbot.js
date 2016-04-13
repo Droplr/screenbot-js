@@ -77,30 +77,30 @@ var Screenbot = (function Screenbot() {
     this.token = token || null; // Our Screenbot token
     this.service = args.service || 'sdk';
     this.host = args.host || 'https://app.screenbot.io';
-
-    this.endpoint = function(command){
-      return this.host +
-             "/api/services/" +
-             this.service +
-             "/command?token=" +
-             this.token +
-             "&text=" +
-             command;
-    };
-
-    this.response_endpoint = function(channel_token){
-      return this.host +
-             "/api/services/" +
-             this.service +
-             "/response?channel_token=" +
-             channel_token;
-    };
   }
+
+  ScreenbotConstructor.prototype._endpoint = function(command){
+    return this.host +
+           "/api/services/" +
+           this.service +
+           "/command?token=" +
+           this.token +
+           "&text=" +
+           command;
+  };
+
+  ScreenbotConstructor.prototype._response_endpoint = function(channel_token){
+    return this.host +
+           "/api/services/" +
+           this.service +
+           "/response?channel_token=" +
+           channel_token;
+  };
 
   ScreenbotConstructor.prototype.command = function(command, cb) {
     console.log("Source: " + this.source);
 
-    _request(this.endpoint(command), function(err, result) {
+    _request(this._endpoint(command), function(err, result) {
       if(err instanceof Error) return cb(err);
       if(err) return cb(_handleError({ code: ERROR_CODES.CLIENT_UNAVAILABLE.code, message: err.error }));
       if('connected' in result) return cb(null, { connected: result.connected });
@@ -109,7 +109,7 @@ var Screenbot = (function Screenbot() {
         this.source.close();
       }
 
-      this.source = new EventSource(this.response_endpoint(result.token));
+      this.source = new EventSource(this._response_endpoint(result.token));
       this.source.onmessage = function(event) {
         this.source.close();
         if(event.data === "0" || !event.data.length) return cb(_handleError({ code: ERROR_CODES.NO_DATA_RECEIVED.code }));
