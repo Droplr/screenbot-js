@@ -5,6 +5,20 @@ var ERROR_CODES = {
 };
 
 var Screenbot = (function Screenbot() {
+  // These commands available as methods
+  var COMMANDS = [
+    'ping', // Check whether the Screenbot app is running and connected
+    [ 'activate', '' ], // Take a screenshot (aliased)
+    'shot', // Take a screenshot
+    'draw', // Create an annotation
+    'cast', // Create a screencast
+    'clip' // Upload your clipboard
+  ];
+
+  function generateCurriedCommand(command) {
+    return function(cb) { this.command(command, cb); };
+  }
+
   var _parseResponse = function(responseText){
     var response;
     try {
@@ -106,35 +120,13 @@ var Screenbot = (function Screenbot() {
     }.bind(this));
   };
 
-  // Check whether the Screenbot app is running and connected
-  ScreenbotConstructor.prototype.ping = function(cb) {
-    this.command("ping",cb);
-  };
-
-  // Take a screenshot
-  ScreenbotConstructor.prototype.activate = function(cb) {
-    this.command("",cb);
-  };
-
-  // Take a screenshot
-  ScreenbotConstructor.prototype.shot = function(cb) {
-    this.command("shot",cb);
-  };
-
-  // Create an annotation
-  ScreenbotConstructor.prototype.draw = function(cb) {
-    this.command("draw",cb);
-  };
-
-  // Create a screencast
-  ScreenbotConstructor.prototype.cast = function(cb) {
-    this.command("cast",cb);
-  };
-
-  // Upload your clipboard
-  ScreenbotConstructor.prototype.clip = function(cb) {
-    this.command("clip",cb);
-  };
+  // Export each command's method
+  COMMANDS.forEach(function(cmd) {
+    if(cmd instanceof Array)
+      ScreenbotConstructor.prototype[cmd[0]] = generateCurriedCommand(cmd[1]);
+    else
+      ScreenbotConstructor.prototype[cmd] = generateCurriedCommand([cmd]);
+  });
 
   // Return the constructor
   return ScreenbotConstructor;
