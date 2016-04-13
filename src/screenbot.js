@@ -1,10 +1,9 @@
-var ERROR_CODES = {
-  CLIENT_UNAVAILABLE: { code: 1, message: 'Screenbot isn\'t running' },
-  NO_DATA_RECEIVED: { code: 2, message: 'No data received' },
-  PARSE_ERROR: { code: 3, message: 'Error parsing response' }
-};
-
 var Screenbot = (function Screenbot() {
+  // Error codes
+  var CLIENT_UNAVAILABLE = { code: 1, message: 'Screenbot isn\'t running' },
+      NO_DATA_RECEIVED = { code: 2, message: 'No data received' },
+      PARSE_ERROR = { code: 3, message: 'Error parsing response' };
+
   // These commands available as methods
   var COMMANDS = [
     'ping', // Check whether the Screenbot app is running and connected
@@ -15,57 +14,46 @@ var Screenbot = (function Screenbot() {
     'clip' // Upload your clipboard
   ];
 
-  function generateCurriedCommand(command) {
+  function _generateCurriedCommand(command) {
     return function(cb) { this.command(command, cb); };
   }
 
-  var _parseResponse = function(responseText){
+  function _parseResponse(responseText){
     var response;
     try {
       response = JSON.parse(responseText);
+      if(!response.ok) return new ScreenbotError(CLIENT_UNAVAILABLE, response);
     }
     catch (e) {
-      return _handleError({ code: ERROR_CODES.PARSE_ERROR.code });
+      return new ScreenbotError(PARSE_ERROR);
     }
-
     return response;
-  };
+  }
 
-  var _request = function(endpoint, cb){
+  function _request(endpoint, cb){
     var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function() {
       if (xhttp.readyState === 4 && xhttp.status === 200) {
         var response = _parseResponse(xhttp.responseText);
-        if(response instanceof Error || !response.ok) cb(response);
+        if(response instanceof Error) cb(response);
 
         cb(null, response);
       } else if(xhttp.readyState === 4) {
-        cb(_parseResponse(xhttp.responseText));
+        // Return an error if the status is not 200 and there is nothing in the response
+        if(xhttp.responseText === "") return cb(new ScreenbotError(NO_DATA_RECEIVED));
       }
     };
     xhttp.open("GET", endpoint, true);
     xhttp.send();
-  };
+  }
 
-  var _handleError = function(args){
-    return new ScreenbotError(args.code, args.message);
-  };
-
-  var ScreenbotError = function(code, message){
+  function ScreenbotError(args, originalException){
     Error.call(this);
     this.name = 'Screenbot Error';
-    this.code = code;
-    this.message = message || findErrorMessage(code) || 'An error has occurred';
-
-    function findErrorMessage(code) {
-      for (var error in ERROR_CODES) {
-        if (ERROR_CODES.hasOwnProperty(error)) {
-          var currentError = ERROR_CODES[error];
-          if(currentError.code === code) return currentError.message;
-        }
-      }
-    }
-  };
+    this.code = args.code;
+    this.message = args.message || 'An error has occurred';
+    this.originalException = originalException;
+  }
 
   ScreenbotError.prototype = Object.create(Error.prototype);
   ScreenbotError.prototype.constructor = ScreenbotError;
@@ -101,8 +89,8 @@ var Screenbot = (function Screenbot() {
     console.log("Source: " + this.source);
 
     _request(this._endpoint(command), function(err, result) {
-      if(err instanceof Error) return cb(err);
-      if(err) return cb(_handleError({ code: ERROR_CODES.CLIENT_UNAVAILABLE.code, message: err.error }));
+      if(err) return cb(err);
+      // Return response for 'ping' command
       if('connected' in result) return cb(null, { connected: result.connected });
 
       if(this.source && this.source.readyState !== 2) {
@@ -112,7 +100,7 @@ var Screenbot = (function Screenbot() {
       this.source = new EventSource(this._response_endpoint(result.token));
       this.source.onmessage = function(event) {
         this.source.close();
-        if(event.data === "0" || !event.data.length) return cb(_handleError({ code: ERROR_CODES.NO_DATA_RECEIVED.code }));
+        if(event.data === "0" || !event.data.length) return cb(new ScreenbotError(NO_DATA_RECEIVED));
 
         var eventData = { url: event.data };
         cb(null, eventData);
@@ -123,9 +111,9 @@ var Screenbot = (function Screenbot() {
   // Export each command's method
   COMMANDS.forEach(function(cmd) {
     if(cmd instanceof Array)
-      ScreenbotConstructor.prototype[cmd[0]] = generateCurriedCommand(cmd[1]);
+      ScreenbotConstructor.prototype[cmd[0]] = _generateCurriedCommand(cmd[1]);
     else
-      ScreenbotConstructor.prototype[cmd] = generateCurriedCommand([cmd]);
+      ScreenbotConstructor.prototype[cmd] = _generateCurriedCommand([cmd]);
   });
 
   // Return the constructor
