@@ -5,141 +5,137 @@ var ERROR_CODES = {
 };
 
 var Screenbot = (function Screenbot() {
-    var _private = {
-        "source"  : null, // Our EventSource connection
-        "token"   : null, // Our Screenbot token
-        "service" : "sdk",
-        "host"    : "https://app.screenbot.io"
-    };
+  var _parseResponse = function(responseText){
+    var response;
+    try {
+      response = JSON.parse(responseText);
+    }
+    catch (e) {
+      return _handleError({ code: ERROR_CODES.PARSE_ERROR.code });
+    }
 
-    var _endpoint = function(command){
-      return _private.host +
+    return response;
+  };
+
+  var _request = function(endpoint, cb){
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+      if (xhttp.readyState === 4 && xhttp.status === 200) {
+        var response = _parseResponse(xhttp.responseText);
+        if(response instanceof Error || !response.ok) cb(response);
+
+        cb(null, response);
+      } else if(xhttp.readyState === 4) {
+        cb(_parseResponse(xhttp.responseText));
+      }
+    };
+    xhttp.open("GET", endpoint, true);
+    xhttp.send();
+  };
+
+  var _handleError = function(args){
+    return new ScreenbotError(args.code, args.message);
+  };
+
+  var ScreenbotError = function(code, message){
+    Error.call(this);
+    this.name = 'Screenbot Error';
+    this.code = code;
+    this.message = message || findErrorMessage(code) || 'An error has occurred';
+
+    function findErrorMessage(code) {
+      for (var error in ERROR_CODES) {
+        if (ERROR_CODES.hasOwnProperty(error)) {
+          var currentError = ERROR_CODES[error];
+          if(currentError.code === code) return currentError.message;
+        }
+      }
+    }
+  };
+
+  ScreenbotError.prototype = Object.create(Error.prototype);
+  ScreenbotError.prototype.constructor = ScreenbotError;
+
+  function ScreenbotConstructor(token, args) {
+    if(typeof args === 'undefined') args = {};
+
+    this.source = null; // Our EventSource connection
+    this.token = token || null; // Our Screenbot token
+    this.service = args.service || 'sdk';
+    this.host = args.host || 'https://app.screenbot.io';
+
+    this.endpoint = function(command){
+      return this.host +
              "/api/services/" +
-             _private.service +
+             this.service +
              "/command?token=" +
-             _private.token +
+             this.token +
              "&text=" +
              command;
     };
 
-    var _response_endpoint = function(channel_token){
-      return _private.host +
+    this.response_endpoint = function(channel_token){
+      return this.host +
              "/api/services/" +
-             _private.service +
+             this.service +
              "/response?channel_token=" +
              channel_token;
     };
+  }
 
-    var _parseResponse = function(responseText){
-      try {
-        var response = JSON.parse(responseText);
+  ScreenbotConstructor.prototype.command = function(command, cb) {
+    console.log("Source: " + this.source);
+
+    _request(this.endpoint(command), function(err, result) {
+      if(err instanceof Error) return cb(err);
+      if(err) return cb(_handleError({ code: ERROR_CODES.CLIENT_UNAVAILABLE.code, message: err.error }));
+      if('connected' in result) return cb(null, { connected: result.connected });
+
+      if(this.source && this.source.readyState !== 2) {
+        this.source.close();
       }
-      catch (e) {
-        return _handleError({ code: ERROR_CODES.PARSE_ERROR.code });
-      }
 
-      return response;
-    };
+      this.source = new EventSource(this.response_endpoint(result.token));
+      this.source.onmessage = function(event) {
+        this.source.close();
+        if(event.data === "0" || !event.data.length) return cb(_handleError({ code: ERROR_CODES.NO_DATA_RECEIVED.code }));
 
-    var _request = function(endpoint, cb){
-      var xhttp = new XMLHttpRequest();
-      xhttp.onreadystatechange = function() {
-        if (xhttp.readyState === 4 && xhttp.status === 200) {
-          var response = _parseResponse(xhttp.responseText)
-          if(response instanceof Error || !response.ok) cb(response);
+        var eventData = { url: event.data };
+        cb(null, eventData);
+      }.bind(this);
+    }.bind(this));
+  };
 
-          cb(null, response);
-        } else if(xhttp.readyState === 4) {
-          cb(_parseResponse(xhttp.responseText));
-        }
-      };
-      xhttp.open("GET", endpoint, true);
-      xhttp.send();
-    };
+  // Check whether the Screenbot app is running and connected
+  ScreenbotConstructor.prototype.ping = function(cb) {
+    this.command("ping",cb);
+  };
 
-    var _handleError = function(args){
-      return new ScreenbotError(args.code, args.message);
-    };
+  // Take a screenshot
+  ScreenbotConstructor.prototype.activate = function(cb) {
+    this.command("",cb);
+  };
 
-    var ScreenbotError = function(code, message){
-      Error.call(this);
-      this.name = 'Screenbot Error';
-      this.code = code;
-      this.message = message || findErrorMessage(code) || 'An error has occurred';
+  // Take a screenshot
+  ScreenbotConstructor.prototype.shot = function(cb) {
+    this.command("shot",cb);
+  };
 
-      function findErrorMessage(code) {
-        for (var error in ERROR_CODES) {
-          if (ERROR_CODES.hasOwnProperty(error)) {
-            var currentError = ERROR_CODES[error];
-            if(currentError.code === code) return currentError.message;
-          }
-        }
-      }
-    };
+  // Create an annotation
+  ScreenbotConstructor.prototype.draw = function(cb) {
+    this.command("draw",cb);
+  };
 
-    ScreenbotError.prototype = Object.create(Error.prototype);
-    ScreenbotError.prototype.constructor = ScreenbotError;
+  // Create a screencast
+  ScreenbotConstructor.prototype.cast = function(cb) {
+    this.command("cast",cb);
+  };
 
-    // Return the constructor
-    return function ScreenbotConstructor(token, args) {
-        var _this = this; // Cache the `this` keyword
+  // Upload your clipboard
+  ScreenbotConstructor.prototype.clip = function(cb) {
+    this.command("clip",cb);
+  };
 
-        _private.token = token;
-        if(args && args.service) _private.service = args.service;
-        if(args && args.host) _private.host = args.host;
-
-        _this.command = function (command, cb) {
-          console.log("Source: " + _private.source);
-
-          _request(_endpoint(command), function(err, result) {
-            if(err instanceof Error) return cb(err);
-            if(err) return cb(_handleError({ code: ERROR_CODES.CLIENT_UNAVAILABLE.code, message: err.error }));
-            if('connected' in result) return cb(null, { connected: result.connected });
-
-            if(_private.source && _private.source.readyState !== 2) {
-              _private.source.close();
-            }
-
-            _private.source = new EventSource(_response_endpoint(result.token));
-            _private.source.onmessage = function(event) {
-              _private.source.close();
-              if(event.data === "0" || !event.data.length) return cb(_handleError({ code: ERROR_CODES.NO_DATA_RECEIVED.code }));
-
-              var eventData = { url: event.data };
-              cb(null, eventData);
-            };
-          });
-        };
-
-        // Check whether the Screenbot app is running and connected
-        _this.ping = function(cb) {
-          _this.command("ping",cb);
-        };
-
-        // Take a screenshot
-        _this.activate = function(cb) {
-          _this.command("",cb);
-        };
-
-        // Take a screenshot
-        _this.shot = function(cb) {
-          _this.command("shot",cb);
-        };
-
-        // Create an annotation
-        _this.draw = function(cb) {
-          _this.command("draw",cb);
-        };
-
-        // Create a screencast
-        _this.cast = function(cb) {
-          _this.command("cast",cb);
-        };
-
-        // Upload your clipboard
-        _this.clip = function(cb) {
-          _this.command("clip",cb);
-        };
-
-    };
+  // Return the constructor
+  return ScreenbotConstructor;
 }());
