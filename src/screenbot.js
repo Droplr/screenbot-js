@@ -36,7 +36,6 @@ var Screenbot = (function Screenbot() {
       if (xhttp.readyState === 4 && xhttp.status === 200) {
         var response = _parseResponse(xhttp.responseText);
         if(response instanceof Error) cb(response);
-
         cb(null, response);
       } else if(xhttp.readyState === 4) {
         // Return an error if the status is not 200 and there is nothing in the response
@@ -85,6 +84,12 @@ var Screenbot = (function Screenbot() {
            channel_token;
   };
 
+  ScreenbotConstructor.prototype._setEventSourceTimer = function(){
+    return setTimeout(function(){
+      this.source.close();
+    }.bind(this), 2000);
+  };
+
   ScreenbotConstructor.prototype.command = function(command, cb) {
     console.log("Source: " + this.source);
 
@@ -98,8 +103,12 @@ var Screenbot = (function Screenbot() {
       }
 
       this.source = new EventSource(this._response_endpoint(result.token));
+      var timeoutID = this._setEventSourceTimer();
+
       this.source.onmessage = function(event) {
+        clearTimeout(timeoutID);
         this.source.close();
+
         if(event.data === "0" || !event.data.length) return cb(new ScreenbotError(NO_DATA_RECEIVED));
 
         var eventData = { url: event.data };
