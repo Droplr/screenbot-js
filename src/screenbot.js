@@ -1,108 +1,130 @@
 var Screenbot = (function Screenbot() {
-    var _private = {
-        "source"  : null, // Our EventSource connection
-        "token"   : null, // Our Screenbot token
-        "service" : "sdk",
-        "host"    : "https://app.screenbot.io"
+  // Error codes
+  var CLIENT_UNAVAILABLE = { code: 1, message: 'Screenbot isn\'t running' },
+      NO_DATA_RECEIVED = { code: 2, message: 'No data received' },
+      PARSE_ERROR = { code: 3, message: 'Error parsing response' };
+
+  // These commands available as methods
+  var COMMANDS = [
+    'ping', // Check whether the Screenbot app is running and connected
+    [ 'activate', '' ], // Take a screenshot (aliased)
+    'shot', // Take a screenshot
+    'draw', // Create an annotation
+    'cast', // Create a screencast
+    'clip' // Upload your clipboard
+  ];
+
+  function _generateCurriedCommand(command) {
+    return function(cb) { this.command(command, cb); };
+  }
+
+  function _parseResponse(responseText){
+    var response;
+    try {
+      response = JSON.parse(responseText);
+      if(!response.ok) return new ScreenbotError(CLIENT_UNAVAILABLE, response);
+    }
+    catch (e) {
+      return new ScreenbotError(PARSE_ERROR);
+    }
+    return response;
+  }
+
+  function _request(endpoint, cb){
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+      if (xhttp.readyState === 4 && xhttp.status === 200) {
+        var response = _parseResponse(xhttp.responseText);
+        if(response instanceof Error) cb(response);
+        cb(null, response);
+      } else if(xhttp.readyState === 4) {
+        // Return an error if the status is not 200 and there is nothing in the response
+        if(xhttp.responseText === "") return cb(new ScreenbotError(NO_DATA_RECEIVED));
+      }
     };
+    xhttp.open("GET", endpoint, true);
+    xhttp.send();
+  }
 
-    var _endpoint = function(command){
-      return _private.host +
-             "/api/services/" +
-             _private.service +
-             "/command?token=" +
-             _private.token +
-             "&text=" +
-             command;
-    };
+  function ScreenbotError(args, originalException){
+    Error.call(this);
+    this.name = 'Screenbot Error';
+    this.code = args.code;
+    this.message = args.message || 'An error has occurred';
+    this.originalException = originalException;
+  }
 
-    var _response_endpoint = function(channel_token){
-      return _private.host +
-             "/api/services/" +
-             _private.service +
-             "/response?channel_token=" +
-             channel_token;
-    };
+  ScreenbotError.prototype = Object.create(Error.prototype);
+  ScreenbotError.prototype.constructor = ScreenbotError;
 
-    var _request = function(endpoint, callback){
-      var xhttp = new XMLHttpRequest();
-      xhttp.onreadystatechange = function() {
-        if (xhttp.readyState === 4 && xhttp.status === 200) {
-          var response = JSON.parse(xhttp.responseText);
-          callback(response.ok, response);
-        } else if(xhttp.readyState === 4) {
-          callback(false, xhttp.responseText);
-        }
-      };
-      xhttp.open("GET", endpoint, true);
-      xhttp.send();
-    };
+  function ScreenbotConstructor(token, args) {
+    if(typeof args === 'undefined') args = {};
 
-    var _setEventSourceTimer = function() {
-      return setTimeout(_closeEventSource, 60000);
-    };
+    this.source = null; // Our EventSource connection
+    this.token = token || null; // Our Screenbot token
+    this.service = args.service || 'sdk';
+    this.host = args.host || 'https://app.screenbot.io';
+  }
 
-    var _closeEventSource = function(){
-      _private.source.close();
-    };
+  ScreenbotConstructor.prototype._endpoint = function(command){
+    return this.host +
+           "/api/services/" +
+           this.service +
+           "/command?token=" +
+           this.token +
+           "&text=" +
+           command;
+  };
 
-    // Return the constructor
-    return function ScreenbotConstructor(token, args) {
-        var _this = this; // Cache the `this` keyword
+  ScreenbotConstructor.prototype._response_endpoint = function(channel_token){
+    return this.host +
+           "/api/services/" +
+           this.service +
+           "/response?channel_token=" +
+           channel_token;
+  };
 
-        _private.token = token;
-        if(args && args.service) _private.service = args.service;
-        if(args && args.host) _private.host = args.host;
+  ScreenbotConstructor.prototype._setEventSourceTimer = function(){
+    return setTimeout(function(){
+      this.source.close();
+    }.bind(this), 2000);
+  };
 
-        _this.command = function (command, cb) {
-          console.log("Source: " + _private.source);
+  ScreenbotConstructor.prototype.command = function(command, cb) {
+    console.log("Source: " + this.source);
 
-          _request(_endpoint(command), function(success, response) {
+    _request(this._endpoint(command), function(err, result) {
+      if(err) return cb(err);
+      // Return response for 'ping' command
+      if('connected' in result) return cb(null, { connected: result.connected });
 
-            if (!success) return cb(false, response.error);
+      if(this.source && this.source.readyState !== 2) {
+        this.source.close();
+      }
 
-            if(_private.source && _private.source.readyState !== 2) {
-              _closeEventSource();
-            }
+      this.source = new EventSource(this._response_endpoint(result.token));
+      var timeoutID = this._setEventSourceTimer();
 
-            _private.source = new EventSource(_response_endpoint(response.token));
+      this.source.onmessage = function(event) {
+        clearTimeout(timeoutID);
+        this.source.close();
 
-            var timeoutID = _setEventSourceTimer();
+        if(event.data === "0" || !event.data.length) return cb(new ScreenbotError(NO_DATA_RECEIVED));
 
-            _private.source.onmessage = function(event) {
-              clearTimeout(timeoutID);
-              _closeEventSource();
+        var eventData = { url: event.data };
+        cb(null, eventData);
+      }.bind(this);
+    }.bind(this));
+  };
 
-              if(event.data === "0") cb(false);
-              if(event.data !== "0") cb(true, event.data);
-            };
-          });
-        };
+  // Export each command's method
+  COMMANDS.forEach(function(cmd) {
+    if(cmd instanceof Array)
+      ScreenbotConstructor.prototype[cmd[0]] = _generateCurriedCommand(cmd[1]);
+    else
+      ScreenbotConstructor.prototype[cmd] = _generateCurriedCommand([cmd]);
+  });
 
-        // Take a screenshot
-        _this.activate = function(cb) {
-          _this.command("",cb);
-        };
-
-        // Take a screenshot
-        _this.shot = function(cb) {
-          _this.command("shot",cb);
-        };
-
-        // Create an annotation
-        _this.draw = function(cb) {
-          _this.command("draw",cb);
-        };
-
-        // Create a screencast
-        _this.cast = function(cb) {
-          _this.command("cast",cb);
-        };
-
-        // Upload your clipboard
-        _this.clip = function(cb) {
-          _this.command("clip",cb);
-        };
-
-    };
+  // Return the constructor
+  return ScreenbotConstructor;
 }());
