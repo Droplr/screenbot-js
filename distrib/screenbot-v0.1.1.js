@@ -1,4 +1,4 @@
-/*! screenbot v0.1.0 - 2016-04-14 
+/*! screenbot v0.1.1 - 2016-04-14 
  *  License: Apache-2.0 */
 var Screenbot = (function Screenbot() {
   // Error codes
@@ -89,7 +89,7 @@ var Screenbot = (function Screenbot() {
   ScreenbotConstructor.prototype._setEventSourceTimer = function(){
     return setTimeout(function(){
       this.source.close();
-    }.bind(this), 2000);
+    }.bind(this), 60000);
   };
 
   ScreenbotConstructor.prototype.command = function(command, cb) {
