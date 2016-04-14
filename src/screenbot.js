@@ -87,7 +87,7 @@ var Screenbot = (function Screenbot() {
   ScreenbotConstructor.prototype._setEventSourceTimer = function(){
     return setTimeout(function(){
       this.source.close();
-    }.bind(this), 2000);
+    }.bind(this), 60000);
   };
 
   ScreenbotConstructor.prototype.command = function(command, cb) {
